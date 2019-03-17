@@ -1,33 +1,29 @@
 require('dotenv').config();
 const request = require('request');
 const express = require('express');
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 4000;
 const _ = require('lodash');
 const bodyParser = require('body-parser');
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
-
 // STATUS LED
 let status = [false, false];
 // TOPIC
 const LED_TOPIC = `/ESP/LED`;
-
 // Create a MQTT Client
 const mqtt = require('mqtt');
 // Create a client connection to CloudMQTT for live data
-const client = mqtt.connect('mqtt://m16.cloudmqtt.com', {
-  username: 'benzintel',
-  password: 'tam024685051',
-  port: 16876
+const client = mqtt.connect('m16.cloudmqtt.com'),  // Server MQTT ของเรานะ
+{
+  username: 'cszwalpv', // Username MQTT ของเรานะ
+  password: 'Gqxx2jCFxwsR', // Password MQTT ของเรานะ
+  port: 17495 // Port MQTT ของเรานะ
 });
-
 client.on('connect', function() { 
   // When connected
   console.log("Connected to CloudMQTT");
-
-  client.subscribe('/ESP/LED', function() {
+client.subscribe('/ESP/LED', function() {
     // when a message arrives, do something with it
     client.on('message', function(topic, message, packet) {
       switch(topic) {
@@ -46,8 +42,7 @@ client.on('connect', function() {
               });
             }
           }
-
-          console.log(`Received '${message}' on '${topic}`);
+console.log(`Received '${message}' on '${topic}`);
         break;
         default:
           console.log(`Unknow Topic group`);
@@ -55,70 +50,57 @@ client.on('connect', function() {
     });
   });
 });
-
 app.post('/webhook', async (req, res) => {
-
-  const message = req.body.events[0].message.text;
+const message = req.body.events[0].message.text;
   const reply_token = req.body.events[0].replyToken;
-  const TOKEN = `HeNOJnWy1GLWFZMU3Q/SR9+jAeM18+hBukabEQLuts+zzi4OkuNphFsb/eCDcVzC54bF22bjW+Zfr1kDjrpKsK3OJrlBY1qZYKyhInoWB7HL0bH+u/uRffNGER8i8qHcyfO3COACztFNNRcYf8Dx8QdB04t89/1O/w1cDnyilFU=`;
+  const TOKEN = `mBMq4+bnv+GRs4j+OZq71Hd86b539QhX9fDhf0aME1j+aWe73P/bml5eGNnrCC631NVOe4W10DF9CPk0pIAIoU4jtCaKmqcN+9wlCGyT758C8HEpZZ4m6vwR+jobXHYxOlKuJV2qKS2p3aOZDMTC6wdB04t89/1O/w1cDnyilFU=`; // Token ที่ได้จาก Channel access token
   const HEADERS = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${TOKEN}`
   };
-
-  if (message == 'เปิดไฟ หน้าบ้าน' || message == 'ปิดไฟ หน้าบ้าน') {
+if (message == 'เปิดไฟ หน้าบ้าน' || message == 'ปิดไฟ หน้าบ้าน') {
     if (message == 'เปิดไฟ หน้าบ้าน') {
       await mqttMessage(LED_TOPIC, 'LEDON_ONE');
     } else {
       await mqttMessage(LED_TOPIC, 'LEDOFF_ONE');
     }
   }
-
-  if (message == 'เปิดไฟ หลังบ้าน' || message == 'ปิดไฟ หลังบ้าน') {
+if (message == 'เปิดไฟ หลังบ้าน' || message == 'ปิดไฟ หลังบ้าน') {
     if (message == 'เปิดไฟ หลังบ้าน') {
       await mqttMessage(LED_TOPIC, 'LEDON_TWO');
     } else {
       await mqttMessage(LED_TOPIC, 'LEDOFF_TWO');
     }
   }
-
-  mqttMessage(LED_TOPIC, 'GET');
-
-  if (message == 'สถานะทั้งหมด') {
+mqttMessage(LED_TOPIC, 'GET');
+if (message == 'สถานะทั้งหมด') {
     await checkStatus();
   } else {
     await checkStatus();
   }
-
-  console.log(status);
+console.log(status);
   const objectMessage = genFlexMessage(status[0], status[1]);
-
-  const body = JSON.stringify({
+const body = JSON.stringify({
     replyToken: reply_token,
     messages: [
       objectMessage
     ]
   });
-
-  request({
+request({
     method: `POST`,
     url: 'https://api.line.me/v2/bot/message/reply',
     headers: HEADERS,
     body: body
   });
-
-  res.sendStatus(200);
+res.sendStatus(200);
 });
-
 let mqttMessage = async (topic, message) => {
   client.publish(topic, message);
   await checkStatus();
 }
-
 let checkStatus = async () => {
   await new Promise(done => setTimeout(done, 3000));
 }
-
 let genFlexMessage = (ledOne, ledTwo) => {
   return {
     "type": "flex",
@@ -229,5 +211,4 @@ let genFlexMessage = (ledOne, ledTwo) => {
     }
   };
 }
-
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
